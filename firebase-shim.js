@@ -15,7 +15,20 @@
   firebase.initializeApp(cfg);
   const fs = firebase.firestore();
   const FV = firebase.firestore.FieldValue;
-  const authP = firebase.auth().signInAnonymously().then((c) => c.user.uid).catch((e) => { console.warn('Auth anonyme', e); return null; });
+  const authP = firebase.auth().signInAnonymously().then((c) => c.user.uid).catch((e) => {
+    console.warn('Auth anonyme', e);
+    const code = (e && e.code) || 'inconnu';
+    const hint = {
+      'auth/admin-restricted-operation': 'la connexion « Anonyme » n’est pas activée dans Firebase Authentication',
+      'auth/operation-not-allowed': 'la connexion « Anonyme » n’est pas activée dans Firebase Authentication',
+      'auth/api-key-not-valid.-please-pass-a-valid-api-key.': 'la clé apiKey de firebase-config.js est incorrecte',
+      'auth/invalid-api-key': 'la clé apiKey de firebase-config.js est incorrecte',
+      'auth/unauthorized-domain': 'ce domaine n’est pas dans les domaines autorisés de Firebase Authentication',
+      'auth/network-request-failed': 'le réseau bloque l’accès à Firebase'
+    }[code];
+    window.LE3000_OFFLINE_MSG = 'Jeu en ligne indisponible : ' + (hint || 'connexion à Firebase refusée') + ' (code ' + code + '). Le jeu sur un seul appareil fonctionne.';
+    return null;
+  });
   const mapErr = (e) => ({ code: ({ 'permission-denied': 'invalid_argument', 'resource-exhausted': 'quota_exceeded', unavailable: 'unavailable', unauthenticated: 'invalid_argument' })[e && e.code] || 'unavailable', message: (e && e.message) || '' });
 
   /* ---------- db : sessions/<code> -> tables/<code> {hostUid, ownerId, rev, json} ---------- */
