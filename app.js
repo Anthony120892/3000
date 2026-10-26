@@ -485,6 +485,15 @@ function showWin(g) {
 }
 
 /* ======================= Actions de jeu ======================= */
+function feedback(ev) {
+  if (!ev) return;
+  if (ev.outcome === 'win') { beep('win'); S.flash = 'flash'; }
+  else if (ev.kind === '642' || ev.kind === '122') { beep('penalty'); S.flash = 'shake'; }
+  else if (ev.outcome === 'bust' || ev.kind === 'zero') { beep('loss'); S.flash = 'shake'; }
+  else if (ev.kind === 'brelan') { beep('brelan'); S.flash = 'flash'; }
+  else if (ev.kind === '421') { beep('bank'); }
+  else beep('gain');
+}
 async function animateTo(dice, ev) {
   S.rolling = true; S.lastEvent = null; beep('roll'); render();
   const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -496,14 +505,21 @@ async function animateTo(dice, ev) {
   }
   await sleep(reduce ? 50 : 160);
   S.showDice = dice; S.rolling = false; S.lastEvent = ev;
-  if (ev) {
-    if (ev.outcome === 'win') { beep('win'); S.flash = 'flash'; }
-    else if (ev.kind === '642' || ev.kind === '122') { beep('penalty'); S.flash = 'shake'; }
-    else if (ev.outcome === 'bust' || ev.kind === 'zero') { beep('loss'); S.flash = 'shake'; }
-    else if (ev.kind === 'brelan') { beep('brelan'); S.flash = 'flash'; }
-    else if (ev.kind === '421') { beep('bank'); }
-    else beep('gain');
-  }
+  feedback(ev);
+}
+/* Téléphone invité : les dés tournent dès l'appui, puis s'arrêtent sur le vrai tirage de l'hôte. */
+let spinT = null, spinStart = 0, spinGuard = null;
+function startSpin() {
+  S.rolling = true; S.lastEvent = null; beep('roll'); spinStart = Date.now(); render();
+  clearInterval(spinT);
+  spinT = setInterval(() => { const el = $('#dice'); if (el) el.querySelectorAll('.die').forEach((d) => (d.className = 'die f' + (1 + Math.floor(Math.random() * 6)))); }, 90);
+  clearTimeout(spinGuard);
+  spinGuard = setTimeout(() => { if (spinT) { stopSpin(); toast('L’hôte ne répond pas. Vérifie que son appareil a la table ouverte.'); render(); } }, 8000);
+}
+function stopSpin() { clearInterval(spinT); spinT = null; clearTimeout(spinGuard); S.rolling = false; }
+async function landSpin(dice, ev) {
+  await sleep(Math.max(0, 300 - (Date.now() - spinStart)));
+  stopSpin(); S.showDice = dice; S.lastEvent = ev; feedback(ev);
 }
 let acting = false;
 async function doRoll(fromRemote) {
@@ -650,6 +666,8 @@ function onGuestDoc(data) {
   const g = lastGame(s);
   if (g && g.rollCount > S.animN && g.log.length && S.view === 'game') {
     const e = g.log[g.log.length - 1]; S.animN = g.rollCount;
+    if (e.dice && spinT) { landSpin(e.dice, e).then(render); return; }
+    if (spinT) stopSpin();
     if (e.dice) { animateTo(e.dice, e).then(render); return; }
     S.lastEvent = e;
   }
@@ -661,8 +679,8 @@ function guestAct(type) {
   if (!g || !S.room) return;
   S.guest.seq = Math.max(Date.now(), S.guest.seq + 1);
   S.guest.pendingRev = s.rev;
-  S.room.presence({ act: { seq: S.guest.seq, type, pid: g.turn.pid, rev: s.rev } }).catch(() => { S.guest.pendingRev = null; toast('Message non envoyé, réessaie.'); render(); });
-  render();
+  S.room.presence({ act: { seq: S.guest.seq, type, pid: g.turn.pid, rev: s.rev } }).catch(() => { S.guest.pendingRev = null; stopSpin(); toast('Message non envoyé, réessaie.'); render(); });
+  if (type === 'roll') startSpin(); else render();
   setTimeout(() => { if (S.guest.pendingRev === s.rev && S.session.rev === s.rev) { S.guest.pendingRev = null; render(); } }, 6000);
 }
 
