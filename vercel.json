@@ -1,0 +1,8 @@
+{
+  "cleanUrls": true,
+  "headers": [
+    { "source": "/firebase-config.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/tests/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }
+  ]
+}
