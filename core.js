@@ -7,12 +7,15 @@
   /* ---------- Configuration : points à confirmer isolés ici ---------- */
   const CONFIG = {
     TARGET: 3000,
-    BANK_THRESHOLD: 300,          // blocage interdit si 0 < théorique <= 300
+    BANK_THRESHOLD: 300,          // blocage interdit si 0 < théorique < 300 (300 pile autorisé, règle de table)
     STAKE_CENTS: 500,             // mise initiale par partie
     P642: { penalty: 250, cents: 250 },
     P122: { penalty: 500, cents: 500 },
     BRELAN_POINTS: 1000,
     P432_POINTS: 250,
+    // 421 : relance obligatoire (pas de blocage). ⚠ À confirmer : il garde les points
+    // ordinaires de son 1 (100). Mettre 0 si le 421 ne rapporte rien.
+    P421_POINTS: 100,
     // ⚠ À confirmer : le 432 impose de bloquer. Si le total théorique tombe
     // entre 1 et 300, on bloque quand même (la règle spéciale prime, §6 ex. 5).
     // false = les points du 432 sont alors perdus.
@@ -35,6 +38,7 @@
     if (s === '246') return { kind: '642', points: 0, label: '642' };
     if (s === '122') return { kind: '122', points: 0, label: '122' };
     if (s === '234') return { kind: '432', points: CONFIG.P432_POINTS, label: '432' };
+    if (s === '124') return { kind: '421', points: CONFIG.P421_POINTS, label: '421' };
     if (dice[0] === dice[1] && dice[1] === dice[2])
       return { kind: 'brelan', points: CONFIG.BRELAN_POINTS, label: 'Brelan de ' + dice[0] };
     let pts = 0;
@@ -85,11 +89,11 @@
     if (!g || g.status !== 'playing') return 'Partie terminée.';
     const t = g.turn;
     if (t.rolls === 0) return 'Lance d’abord les dés.';
-    if (t.mustConfirm) return 'Brelan : une relance de confirmation est obligatoire.';
+    if (t.mustConfirm) return (t.confirmWhy === '421' ? '421' : 'Brelan') + ' : une relance est obligatoire.';
     if (CONFIG.REQUIRE_SCORING_ROLL_TO_BANK && !t.scored) return 'Aucun point à bloquer.';
     const th = theoretical(g);
-    if (th > 0 && th <= CONFIG.BANK_THRESHOLD)
-      return `Total théorique ${th} : il faut dépasser ${CONFIG.BANK_THRESHOLD} points pour bloquer.`;
+    if (th > 0 && th < CONFIG.BANK_THRESHOLD)
+      return `Total théorique ${th} : il faut au moins ${CONFIG.BANK_THRESHOLD} points pour bloquer.`;
     return null;
   }
 
@@ -149,13 +153,14 @@
     }
     // points, brelan, 432 : on ajoute au compteur temporaire
     t.temp += ev.points; t.scored = true; e.gained = ev.points;
-    t.mustConfirm = ev.kind === 'brelan';
+    t.mustConfirm = ev.kind === 'brelan' || ev.kind === '421';
+    t.confirmWhy = t.mustConfirm ? ev.kind : null;
     if (finishExactOrBust()) { pushLog(g, e); return e; }
 
     if (ev.kind === '432') {
       const th = theoretical(g);
       if (th > CONFIG.TARGET) { e.lostTemp = t.temp; e.outcome = 'bust'; t.temp = 0; }
-      else if (th > 0 && th <= CONFIG.BANK_THRESHOLD && !CONFIG.P432_BYPASSES_THRESHOLD) {
+      else if (th > 0 && th < CONFIG.BANK_THRESHOLD && !CONFIG.P432_BYPASSES_THRESHOLD) {
         e.lostTemp = t.temp; e.outcome = 'lost'; t.temp = 0;
       } else {
         g.scores[pid] = th; e.outcome = 'banked'; t.temp = 0;

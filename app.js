@@ -188,10 +188,11 @@ function viewHome() {
         <div class="rule"><b class="gain">5</b><span>50 points</span></div>
         <div class="rule"><b class="gain">111…666</b><span>1000 points, relance obligatoire</span></div>
         <div class="rule"><b class="gain">432</b><span>+250 et fin du tour</span></div>
+        <div class="rule"><b class="gain">421</b><span>+100, relance obligatoire</span></div>
         <div class="rule"><b class="loss">642</b><span>−250 au total, +2,50 € cagnotte</span></div>
         <div class="rule"><b class="loss">122</b><span>−500 au total, +5 € cagnotte</span></div>
       </div>
-      <p class="muted">Pour bloquer, le total après blocage doit dépasser 300 (ou être nul ou négatif). Au-delà de 3000, le tour est annulé. Mise de 5 € par joueur et par partie, le gagnant rafle la cagnotte.</p>
+      <p class="muted">Pour bloquer, le total après blocage doit atteindre au moins 300 (ou être nul ou négatif). Au-delà de 3000, le tour est annulé. Mise de 5 € par joueur et par partie, le gagnant rafle la cagnotte.</p>
     </section>
   </div>`;
 }
@@ -252,6 +253,7 @@ function verdictHTML(e) {
     case '122': return `<span class="big v-loss">122 · −500</span><span class="v-money">+${money(e.cents)} dans la cagnotte de ${who}</span>`;
     case 'brelan': return `<span class="big v-gain">${esc(e.label)} · +1000</span><span>Relance de confirmation obligatoire.</span>`;
     case '432': return `<span class="big v-gain">432 · +250</span><span>Tour bloqué d’office.</span>`;
+    case '421': return `<span class="big v-gain">421${e.gained ? ' · +' + pts(e.gained) : ''}</span><span>Interdit de bloquer : relance obligatoire.</span>`;
     case 'zero': return `<span class="big v-loss">Rien</span><span>${e.lostTemp ? pts(e.lostTemp) + ' points du tour perdus.' : 'Tour suivant.'}</span>`;
     case 'bank': return `<span class="big v-gain">Bloqué · +${pts(e.gained)}</span><span>${who} met ses points à l’abri.</span>`;
     default: return `<span class="big v-gain">+${pts(e.gained)}</span><span>On continue ou on bloque ?</span>`;
@@ -288,7 +290,7 @@ function viewGame() {
     else if (e.outcome === 'bust') badge = '<span class="badge loss">dépassement</span>';
     else if (e.kind === '642' || e.kind === '122') badge = `<span class="badge loss">${e.kind} −${e.penalty}</span> <span class="badge money">+${money(e.cents)}</span>`;
     else if (e.kind === 'zero') badge = `<span class="badge loss">rien${e.lostTemp ? ' −' + pts(e.lostTemp) : ''}</span>`;
-    else badge = `<span class="badge gain">${e.kind === 'brelan' ? 'brelan ' : e.kind === '432' ? '432 ' : ''}+${pts(e.gained)}</span>${e.outcome === 'banked' ? ' <span class="badge">bloqué</span>' : ''}${e.outcome === 'win' ? ' <span class="badge money">victoire</span>' : ''}`;
+    else badge = `<span class="badge gain">${e.kind === 'brelan' ? 'brelan ' : e.kind === '432' ? '432 ' : e.kind === '421' ? '421 ' : ''}+${pts(e.gained)}</span>${e.outcome === 'banked' ? ' <span class="badge">bloqué</span>' : ''}${e.outcome === 'win' ? ' <span class="badge money">victoire</span>' : ''}`;
     return `<div class="e"><div class="mini">${e.dice ? e.dice.map((d) => dieHTML(d)).join('') : '<span class="muted" style="font-size:.85rem">—</span>'}</div><div style="min-width:0"><b>${pname(e.pid)}</b></div><div style="text-align:right">${badge}</div></div>`;
   }).join('') || '<div class="muted">Les lancers apparaîtront ici.</div>';
 
@@ -499,6 +501,7 @@ async function animateTo(dice, ev) {
     else if (ev.kind === '642' || ev.kind === '122') { beep('penalty'); S.flash = 'shake'; }
     else if (ev.outcome === 'bust' || ev.kind === 'zero') { beep('loss'); S.flash = 'shake'; }
     else if (ev.kind === 'brelan') { beep('brelan'); S.flash = 'flash'; }
+    else if (ev.kind === '421') { beep('bank'); }
     else beep('gain');
   }
 }
