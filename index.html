@@ -205,6 +205,31 @@ details.gm summary .no{font-family:var(--display);font-size:1.5rem;font-weight:8
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 @media (prefers-reduced-motion:reduce){.flash,.shake{animation:none}}
 
+/* ---------- Effets plein écran ---------- */
+.fx{position:fixed;inset:0;pointer-events:none;z-index:45;overflow:hidden;display:grid;place-items:center;animation:fxfade 2.1s ease forwards}
+.fx.bad{background:radial-gradient(circle at 50% 45%,rgba(214,52,30,.42),rgba(214,52,30,0) 65%)}
+.fx.good{background:radial-gradient(circle at 50% 45%,rgba(255,206,92,.38),rgba(255,206,92,0) 65%)}
+.fx.win{animation-duration:2.4s}
+.fx .stamp-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding-inline:16px}
+.fx .stamp{font-family:var(--display);font-weight:900;font-size:clamp(5.5rem,30vw,15rem);line-height:.85;animation:stamp .55s cubic-bezier(.2,1.7,.4,1) both}
+.fx.bad .stamp{color:#ff4b2b;text-shadow:0 6px 0 #7a1d10,0 14px 40px rgba(0,0,0,.45);--rot:-9deg}
+.fx.bad.big .stamp{font-size:clamp(6.5rem,36vw,19rem)}
+.fx.good .stamp{color:#ffd24d;text-shadow:0 6px 0 #9a6a00,0 14px 40px rgba(0,0,0,.4);--rot:4deg}
+.fx .sub{font-weight:800;font-size:clamp(1.05rem,3.6vw,1.6rem);background:rgba(15,25,20,.82);color:#fff;padding:8px 16px;border-radius:999px;animation:stamp .5s .15s cubic-bezier(.2,1.5,.4,1) both}
+.fx .coin{position:absolute;top:-70px;left:var(--x);width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1.3rem;color:#6b4500;
+  background:radial-gradient(circle at 35% 30%,#fff0b8,#e7ad2f 58%,#a8730f);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2),0 4px 10px rgba(0,0,0,.3);animation:fall var(--d) var(--delay) cubic-bezier(.35,.05,.65,1) forwards}
+.fx .drop{position:absolute;top:30vh;left:var(--x);font-family:var(--display);font-weight:900;font-size:clamp(2.5rem,9vw,4.5rem);color:#ff4b2b;text-shadow:0 3px 0 #7a1d10;animation:sink 1.6s .35s ease-in both}
+.fx .conf{position:absolute;left:50%;top:45%;border-radius:2px;animation:burst var(--d) cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes stamp{0%{transform:scale(3.2) rotate(var(--rot,0deg));opacity:0}60%{opacity:1}100%{transform:scale(1) rotate(var(--rot,0deg));opacity:1}}
+@keyframes fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(calc(100vh + 140px)) rotate(var(--r))}}
+@keyframes sink{0%{transform:translateY(-20px);opacity:0}20%{opacity:1}100%{transform:translateY(60vh) scale(.6);opacity:0}}
+@keyframes burst{0%{transform:translate(-50%,-50%) rotate(0);opacity:1}80%{opacity:1}100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty) + 25vh)) rotate(var(--r));opacity:0}}
+@keyframes fxfade{0%,80%{opacity:1}100%{opacity:0}}
+.quake{animation:quake .5s}
+.quake-big{animation:quake .8s}
+@keyframes quake{10%,50%,90%{transform:translate(-8px,3px) rotate(-.6deg)}30%,70%{transform:translate(8px,-3px) rotate(.6deg)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.fx,.fx .stamp,.fx .sub,.quake,.quake-big{animation:none}.fx{animation:fxfade 2.1s steps(1,end) forwards}}
+
 @media (max-width:860px){
   .game{grid-template-columns:1fr}
   .hero{grid-template-columns:1fr}

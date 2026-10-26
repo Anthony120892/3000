@@ -467,8 +467,10 @@ function afterRender() {
   }
   // Victoire
   const s = S.session; const g = s && lastGame(s);
-  if (S.view === 'game' && g && g.status === 'won' && S.winSeen !== g.id) {
-    S.winSeen = g.id; showWin(g);
+  // On attend que les dés soient posés et que l'écran ait eu le temps de fêter ça.
+  if (S.view === 'game' && g && g.status === 'won' && S.winSeen !== g.id && !S.rolling && !spinT) {
+    S.winSeen = g.id;
+    setTimeout(() => { if (S.view === 'game' && lastGame(S.session) && lastGame(S.session).id === g.id) showWin(g); }, 2200);
   }
 }
 function showWin(g) {
@@ -485,8 +487,41 @@ function showWin(g) {
 }
 
 /* ======================= Actions de jeu ======================= */
+/* Effets plein écran : 642, 122, brelan (1000) et victoire. */
+function fx(ev) {
+  const kind = ev.outcome === 'win' ? 'win' : ev.kind;
+  if (!['642', '122', 'brelan', 'win'].includes(kind)) return;
+  const old = $('#fx'); if (old) old.remove();
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  let parts = '', cls = '', stamp = '', sub = '';
+  if (kind === '642' || kind === '122') {
+    const big = kind === '122';
+    cls = big ? 'bad big' : 'bad';
+    stamp = kind; sub = `−${big ? 500 : 250} points · +${big ? '5,00' : '2,50'} € dans la cagnotte`;
+    const n = reduce ? 0 : big ? 26 : 12;
+    for (let i = 0; i < n; i++) parts += `<span class="coin" style="--x:${rnd(2, 96)}vw;--d:${rnd(1.1, 1.9)}s;--delay:${rnd(0, .7)}s;--r:${rnd(-200, 200)}deg">€</span>`;
+    if (!reduce) parts += `<span class="drop" style="--x:${rnd(30, 60)}vw">−${big ? 500 : 250}</span>`;
+    if (!reduce) { const app = $('#app'); app.classList.remove('quake', 'quake-big'); void app.offsetWidth; app.classList.add(big ? 'quake-big' : 'quake'); setTimeout(() => app.classList.remove('quake', 'quake-big'), 900); }
+  } else {
+    cls = kind === 'win' ? 'good win' : 'good';
+    stamp = kind === 'win' ? '3000 !' : '1000 !'; sub = kind === 'win' ? pname(ev.pid) + ' gagne la partie' : 'Brelan ! Relance obligatoire';
+    const colors = ['#ffd88a', '#f2a541', '#4fc487', '#e4572e', '#2e86ab', '#fbf6ea', '#ad8ff2'];
+    const n = reduce ? 0 : kind === 'win' ? 90 : 60;
+    for (let i = 0; i < n; i++) {
+      const ang = rnd(0, Math.PI * 2), dist = rnd(25, 60);
+      parts += `<span class="conf" style="--tx:${Math.cos(ang) * dist}vw;--ty:${Math.sin(ang) * dist - 10}vh;--r:${rnd(-720, 720)}deg;--d:${rnd(1.1, 1.8)}s;background:${colors[i % colors.length]};width:${rnd(6, 12)}px;height:${rnd(10, 18)}px"></span>`;
+    }
+  }
+  const el = document.createElement('div');
+  el.id = 'fx'; el.className = 'fx ' + cls; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `${parts}<div class="stamp-wrap"><div class="stamp">${stamp}</div><div class="sub">${sub}</div></div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), kind === 'win' ? 2400 : 2100);
+}
 function feedback(ev) {
   if (!ev) return;
+  fx(ev);
   if (ev.outcome === 'win') { beep('win'); S.flash = 'flash'; }
   else if (ev.kind === '642' || ev.kind === '122') { beep('penalty'); S.flash = 'shake'; }
   else if (ev.outcome === 'bust' || ev.kind === 'zero') { beep('loss'); S.flash = 'shake'; }
@@ -888,5 +923,5 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* ======================= Démarrage ======================= */
 render();
 initCaps();
-window.__le3000 = { S, T };
+window.__le3000 = { S, T, fx };
 })();
