@@ -168,7 +168,8 @@ function viewHome() {
     const g = T.activeGame(s);
     return `<div class="item"><div class="grow"><b>${esc(s.name)}</b> ${s.online ? `<span class="badge">en ligne · ${esc(s.id)}</span>` : ''} ${s.status === 'closed' ? '<span class="badge">clôturée</span>' : ''}
       <div class="muted" style="font-size:.88rem">${s.players.length} joueurs · ${s.games.filter((x) => x.status === 'won').length} parties · ${dateFr(s.updatedAt || s.createdAt)}${g ? ' · partie en cours' : ''}</div></div>
-      <button class="btn sm primary" data-act="open-session" data-id="${esc(s.id)}">${s.status === 'closed' ? 'Consulter' : 'Reprendre'}</button></div>`;
+      <div class="row"><button class="btn sm primary" data-act="open-session" data-id="${esc(s.id)}">${s.status === 'closed' ? 'Consulter' : 'Reprendre'}</button>
+      <button class="btn sm danger" data-act="del-session" data-id="${esc(s.id)}" aria-label="Supprimer la session ${esc(s.name)}">Supprimer</button></div></div>`;
   }).join('') : '<div class="empty">Aucune session enregistrée. Crée la première ci-dessus.</div>';
   return `
   <section class="hero">
@@ -822,6 +823,21 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'open-session': { const ss = allSessions().find((x) => x.id === id); if (ss) openSession(JSON.parse(JSON.stringify(ss)), ss.online && S.canHost ? 'host' : 'local'); break; }
+    case 'del-session': {
+      const ss = allSessions().find((x) => x.id === id); if (!ss) break;
+      let owed = 0;
+      try { owed = T.settlementPlan(balancesOf(T.accounts(ss))).reduce((t, x) => t + x.cents, 0); } catch (e) { owed = 0; }
+      const nGames = ss.games.filter((x) => x.status === 'won').length;
+      const warn = owed > 0 ? `<br><br><b class="loss">Attention : ${money(owed)} de remboursements ne sont pas encore réglés.</b> Exporte le bilan (Comptes → Exporter) avant de supprimer si tu veux le garder.` : '';
+      ask(`Supprimer « ${ss.name} » ?`, `Ses ${nGames} partie${nGames > 1 ? 's' : ''}, ses scores et tout son historique financier seront effacés de cet appareil${ss.online ? ' et de la table en ligne (les joueurs connectés seront déconnectés)' : ''}. Impossible de revenir en arrière.${warn}`, 'Supprimer définitivement', async () => {
+        lsDelete(id);
+        S.dbSessions = S.dbSessions.filter((x) => x.id !== id);
+        if (S.session && S.session.id === id) { S.session = null; S.view = 'home'; }
+        if (S.db && S.canHost) { try { await S.db.doc('sessions/' + id).delete(); } catch (e) { /* déjà absente ou pas à nous */ } }
+        render(); toast('Session supprimée.');
+      }, true);
+      break;
+    }
     case 'restore-open':
       modal(`<h3>Restaurer une sauvegarde</h3><p class="muted">Choisis un fichier de sauvegarde « .json » exporté depuis Le 3000.</p><input type="file" id="restore-file" accept="application/json,.json"><div class="row" style="justify-content:flex-end"><button class="btn" data-act="modal-close">Fermer</button></div>`);
       break;

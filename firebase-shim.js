@@ -52,6 +52,7 @@
           try { await ref.set({ hostUid: uid, ownerId: data.ownerId || uid, rev: data.rev || 0, updatedAt: FV.serverTimestamp(), json: JSON.stringify(data) }); }
           catch (e) { throw mapErr(e); }
         },
+        delete: async () => { await authP; try { await ref.delete(); } catch (e) { throw mapErr(e); } },
         onSnapshot(next, err) {
           let unsub = () => {}, dead = false;
           authP.then(() => { if (dead) return; unsub = ref.onSnapshot((s) => next(unpack(s)), (e) => err && err({ code: 'revoked', message: e.message })); });
